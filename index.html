@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>todo List</title>
+  <script src="https://cdn.tailwindcss.com/3.3.3"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+
+    .task-card {
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .task-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .checkbox:checked+.checkmark {
+      background-color: #4f46e5;
+      border-color: #4f46e5;
+    }
+
+    .checkbox:checked+.checkmark:after {
+      display: block;
+    }
+
+    .checkmark:after {
+      content: "";
+      position: absolute;
+      display: none;
+      left: 5px;
+      top: 1px;
+      width: 5px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    .priority-high {
+      border-left: 4px solid #ef4444;
+    }
+
+    .priority-medium {
+      border-left: 4px solid #f97316;
+    }
+
+    .priority-normal {
+      border-left: 4px solid #4f46e5;
+    }
+
+    .countdown-urgent {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+
+    .countdown-warning {
+      background-color: #ffedd5;
+      color: #ea580c;
+    }
+
+    .countdown-normal {
+      background-color: #ecfdf5;
+      color: #059669;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #4f46e5;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 6px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .confirm-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      z-index: 1001;
+      max-width: 400px;
+      width: 90%;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .confirm-dialog.show {
+      opacity: 1;
+    }
+
+    .dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .dialog-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+  <div class="container max-w-4xl px-4 py-8 mx-auto">
+    <!-- 头部 -->
+    <header class="mb-8 text-center">
+      <h1 class="mb-2 text-3xl font-bold text-indigo-600">Todo List</h1>
+    </header>
+
+    <!-- 添加任务表单 -->
+    <div class="p-6 mb-8 bg-white rounded-lg shadow-md">
+      <div class="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+        <input type="text" id="newTaskInput" placeholder="输入任务内容..."
+          class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <select id="prioritySelect"
+          class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="normal">普通</option>
+          <option value="medium">重要</option>
+          <option value="high">紧急</option>
+        </select>
+        <input type="date" id="dueDateInput"
+          class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <button id="addTaskBtn"
+          class="px-4 py-2 text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700">
+          <i class="mr-1 fas fa-plus"></i> 添加任务
+        </button>
+      </div>
+    </div>
+
+    <!-- 任务列表 -->
+    <div id="listView" class="overflow-hidden bg-white rounded-lg shadow-md">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold">我的任务</h2>
+        <div class="flex space-x-2">
+          <span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">紧急</span>
+          <span class="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">重要</span>
+          <span class="px-2 py-1 text-xs text-indigo-800 bg-indigo-100 rounded-full">普通</span>
+        </div>
+      </div>
+
+      <div id="taskList" class="divide-y divide-gray-200">
+        <!-- 任务将通过JS动态生成 -->
+      </div>
+
+      <div id="emptyState" class="py-12 text-center">
+        <div class="w-24 h-24 mx-auto mb-4 text-gray-300">
+          <i class="text-5xl fas fa-tasks"></i>
+        </div>
+        <h3 class="mb-1 text-lg font-medium text-gray-700">暂无任务</h3>
+        <p class="text-gray-500">点击上方添加按钮创建您的第一个任务</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认对话框 -->
+  <div id="dialogOverlay" class="dialog-overlay"></div>
+  <div id="confirmDialog" class="confirm-dialog">
+    <h3 class="mb-4 text-lg font-semibold">确认删除</h3>
+    <p class="mb-6 text-gray-600">您确定要删除这个任务吗？此操作无法撤销。</p>
+    <div class="flex justify-end space-x-3">
+      <button id="dialogCancel"
+        class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
+      <button id="dialogConfirm" class="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700">确认删除</button>
+    </div>
+  </div>
+
+  <!-- 模态框 -->
+  <div id="modalOverlay"
+    class="fixed inset-0 z-50 flex items-center justify-center invisible transition-opacity duration-300 bg-black bg-opacity-50 opacity-0">
+    <div class="w-full max-w-md transition-all duration-300 transform scale-95 bg-white rounded-lg shadow-xl">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800">编辑任务</h3>
+        <button id="modalClose" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="mb-4">
+          <label class="block mb-2 text-sm font-medium text-gray-700">任务内容</label>
+          <input type="text" id="editTaskInput"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 text-sm font-medium text-gray-700">优先级</label>
+          <select id="editPrioritySelect"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="normal">普通</option>
+            <option value="medium">重要</option>
+            <option value="high">紧急</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 text-sm font-medium text-gray-700">截止日期</label>
+          <input type="date" id="editDueDateInput"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+      </div>
+      <div class="flex justify-end px-6 py-4 space-x-3 border-t border-gray-200">
+        <button id="modalCancel"
+          class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
+        <button id="modalSave" class="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示框 -->
+  <div id="toast" class="toast">操作成功</div>
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // 存储键名
+      const STORAGE_KEY = 'local_tasks';
+
+      // DOM元素
+      const newTaskInput = document.getElementById('newTaskInput');
+      const prioritySelect = document.getElementById('prioritySelect');
+      const dueDateInput = document.getElementById('dueDateInput');
+      const addTaskBtn = document.getElementById('addTaskBtn');
+      const taskList = document.getElementById('taskList');
+      const emptyState = document.getElementById('emptyState');
+
+      // 模态框元素
+      const modalOverlay = document.getElementById('modalOverlay');
+      const modalClose = document.getElementById('modalClose');
+      const modalCancel = document.getElementById('modalCancel');
+      const modalSave = document.getElementById('modalSave');
+      const editTaskInput = document.getElementById('editTaskInput');
+      const editPrioritySelect = document.getElementById('editPrioritySelect');
+      const editDueDateInput = document.getElementById('editDueDateInput');
+
+      // 确认对话框元素
+      const dialogOverlay = document.getElementById('dialogOverlay');
+      const confirmDialog = document.getElementById('confirmDialog');
+      const dialogCancel = document.getElementById('dialogCancel');
+      const dialogConfirm = document.getElementById('dialogConfirm');
+
+      // 提示框
+      const toast = document.getElementById('toast');
+
+      // 当前编辑的任务ID
+      let currentEditId = null;
+      let pendingDeleteId = null;
+
+      // 初始化 - 加载任务
+      loadTasks();
+
+      // 添加任务
+      addTaskBtn.addEventListener('click', addTask);
+      newTaskInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+          addTask();
+        }
+      });
+
+      // 打开模态框
+      function openModal(task) {
+        currentEditId = task.id;
+        editTaskInput.value = task.text;
+        editPrioritySelect.value = task.priority;
+        editDueDateInput.value = task.dueDate;
+
+        modalOverlay.classList.remove('invisible', 'opacity-0');
+        document.querySelector('.modal-overlay .modal-container').classList.remove('scale-95');
+      }
+
+      // 关闭模态框
+      function closeModal() {
+        modalOverlay.classList.add('invisible', 'opacity-0');
+        document.querySelector('.modal-overlay .modal-container').classList.add('scale-95');
+        currentEditId = null;
+      }
+
+      // 显示确认对话框
+      function showConfirmDialog(id) {
+        pendingDeleteId = id;
+        dialogOverlay.classList.add('show');
+        confirmDialog.classList.add('show');
+      }
+
+      // 隐藏确认对话框
+      function hideConfirmDialog() {
+        dialogOverlay.classList.remove('show');
+        confirmDialog.classList.remove('show');
+        pendingDeleteId = null;
+      }
+
+      // 确认删除
+      dialogConfirm.addEventListener('click', function () {
+        if (pendingDeleteId) {
+          deleteTask(pendingDeleteId);
+          hideConfirmDialog();
+        }
+      });
+
+      // 取消删除
+      dialogCancel.addEventListener('click', hideConfirmDialog);
+      dialogOverlay.addEventListener('click', hideConfirmDialog);
+
+      // 显示提示
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 3000);
+      }
+
+      // 添加任务
+      function addTask() {
+        const text = newTaskInput.value.trim();
+        if (!text) {
+          showToast('请输入任务内容');
+          return;
+        }
+
+        const priority = prioritySelect.value;
+        const dueDate = dueDateInput.value;
+
+        const tasks = getTasks();
+        const newTask = {
+          id: Date.now(),
+          text,
+          priority,
+          dueDate,
+          completed: false,
+          createdAt: new Date().toISOString()
+        };
+
+        tasks.push(newTask);
+        saveTasks(tasks);
+        renderTasks(tasks);
+
+        newTaskInput.value = '';
+        dueDateInput.value = '';
+        prioritySelect.value = 'normal';
+
+        showToast('任务添加成功');
+      }
+
+      // 保存编辑后的任务
+      function saveEditedTask() {
+        const text = editTaskInput.value.trim();
+        if (!text) {
+          showToast('请输入任务内容');
+          return;
+        }
+
+        const tasks = getTasks();
+        const taskIndex = tasks.findIndex(task => task.id === currentEditId);
+
+        if (taskIndex !== -1) {
+          tasks[taskIndex] = {
+            ...tasks[taskIndex],
+            text,
+            priority: editPrioritySelect.value,
+            dueDate: editDueDateInput.value
+          };
+
+          saveTasks(tasks);
+          renderTasks(tasks);
+          closeModal();
+          showToast('任务更新成功');
+        }
+      }
+
+      // 删除任务
+      function deleteTask(id) {
+        const tasks = getTasks().filter(task => task.id !== id);
+        saveTasks(tasks);
+        renderTasks(tasks);
+        showToast('任务删除成功');
+      }
+
+      // 切换任务完成状态
+      function toggleTaskComplete(id) {
+        const tasks = getTasks();
+        const taskIndex = tasks.findIndex(task => task.id === id);
+
+        if (taskIndex !== -1) {
+          tasks[taskIndex].completed = !tasks[taskIndex].completed;
+          saveTasks(tasks);
+          renderTasks(tasks);
+        }
+      }
+
+      // 获取任务列表
+      function getTasks() {
+        const tasksJson = localStorage.getItem(STORAGE_KEY);
+        return tasksJson ? JSON.parse(tasksJson) : [];
+      }
+
+      // 保存任务列表
+      function saveTasks(tasks) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      }
+
+      // 加载任务
+      function loadTasks() {
+        const tasks = getTasks();
+        renderTasks(tasks);
+      }
+
+      // 渲染任务列表
+      function renderTasks(tasks) {
+        if (tasks.length === 0) {
+          taskList.innerHTML = '';
+          emptyState.classList.remove('hidden');
+          return;
+        }
+
+        emptyState.classList.add('hidden');
+
+        // 按优先级排序：紧急 > 重要 > 普通
+        const sortedTasks = [...tasks].sort((a, b) => {
+          const priorityOrder = { high: 3, medium: 2, normal: 1 };
+          return priorityOrder[b.priority] - priorityOrder[a.priority];
+        });
+
+        taskList.innerHTML = sortedTasks.map(task => `
+                    <div class="px-6 py-4 hover:bg-gray-50 task-item ${task.priority}-priority ${task.completed ? 'opacity-70' : ''}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        class="absolute w-5 h-5 opacity-0 cursor-pointer checkbox" 
+                                        ${task.completed ? 'checked' : ''}
+                                        data-id="${task.id}"
+                                    >
+                                    <span class="checkmark h-5 w-5 border-2 ${task.completed ? 'border-indigo-500' : 'border-gray-300'} rounded-md flex-shrink-0 flex items-center justify-center mr-3"></span>
+                                </label>
+                                <div>
+                                    <div class="flex items-center">
+                                        <span class="${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}">${task.text}</span>
+                                    </div>
+                                    <div class="text-xs ${task.completed ? 'text-gray-400' : 'text-gray-500'} mt-1">
+                                        ${task.dueDate ? `截止日期: ${task.dueDate}` : '无截止日期'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                ${getPriorityBadge(task.priority)}
+                                ${getDueDateBadge(task.dueDate)}
+                                <button class="text-gray-400 transition-colors edit-btn hover:text-indigo-600" data-id="${task.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-gray-400 transition-colors delete-btn hover:text-red-600" data-id="${task.id}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+        // 添加事件监听
+        document.querySelectorAll('.checkbox').forEach(checkbox => {
+          checkbox.addEventListener('change', function () {
+            toggleTaskComplete(parseInt(this.dataset.id));
+          });
+        });
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+          btn.addEventListener('click', function () {
+            const task = tasks.find(t => t.id === parseInt(this.dataset.id));
+            if (task) openModal(task);
+          });
+        });
+
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', function () {
+            showConfirmDialog(parseInt(this.dataset.id));
+          });
+        });
+      }
+
+      // 获取优先级徽章
+      function getPriorityBadge(priority) {
+        switch (priority) {
+          case 'high':
+            return '<span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">紧急</span>';
+          case 'medium':
+            return '<span class="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">重要</span>';
+          default:
+            return '<span class="px-2 py-1 text-xs text-indigo-800 bg-indigo-100 rounded-full">普通</span>';
+        }
+      }
+
+      // 获取截止日期徽章
+      function getDueDateBadge(dueDate) {
+        if (!dueDate) return '';
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const due = new Date(dueDate);
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          return '<span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">已过期</span>';
+        } else if (diffDays === 0) {
+          return '<span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">今天到期</span>';
+        } else if (diffDays <= 3) {
+          return `<span class="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">${diffDays}天后到期</span>`;
+        } else {
+          return `<span class="px-2 py-1 text-xs text-green-800 bg-green-100 rounded-full">${diffDays}天后到期</span>`;
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
