@@ -18,4 +18,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),  // 使用绝对路径
     },
   },
+  server: {
+    headers: {
+      'Content-Type': 'application/javascript',
+    },
+  },
 });
