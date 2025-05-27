@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>todo List</title>
+  <title>任务管理</title>
   <script src="https://cdn.tailwindcss.com/3.3.3"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <style>
@@ -44,22 +44,6 @@
       border: solid white;
       border-width: 0 2px 2px 0;
       transform: rotate(45deg);
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .fade-in {
-      animation: fadeIn 0.3s ease-out forwards;
     }
 
     .priority-high {
@@ -108,56 +92,105 @@
       opacity: 1;
     }
 
-    .confirm-dialog {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: white;
-      padding: 24px;
-      border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-      z-index: 1001;
-      max-width: 400px;
-      width: 90%;
+    .date-picker-wrapper {
+      position: relative;
+      width: 100%;
+      min-width: 180px;
+    }
+
+    .date-picker-wrapper input[type="date"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      cursor: pointer;
     }
 
-    .confirm-dialog.show {
-      opacity: 1;
+    .date-display {
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      background-color: white;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .dialog-overlay {
+    .priority-filter {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .priority-filter.active {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.5);
+    }
+
+    .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
       background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
       z-index: 1000;
       opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
+      visibility: hidden;
+      transition: all 0.3s ease;
     }
 
-    .dialog-overlay.show {
+    .modal-overlay.active {
       opacity: 1;
-      pointer-events: auto;
+      visibility: visible;
+    }
+
+    .modal-content {
+      background-color: white;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 400px;
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: translateY(0);
+    }
+
+    .edit-task-input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+
+    .edit-task-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
     }
   </style>
 </head>
 
 <body class="min-h-screen">
-  <div class="container max-w-4xl px-4 py-8 mx-auto">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
     <!-- 头部 -->
     <header class="mb-8 text-center">
-      <h1 class="mb-2 text-3xl font-bold text-indigo-600">Todo List</h1>
+      <h1 class="text-3xl font-bold text-indigo-600 mb-2">任务管理</h1>
+      <p class="text-gray-500">使用浏览器本地存储管理您的任务</p>
     </header>
 
     <!-- 添加任务表单 -->
-    <div class="p-6 mb-8 bg-white rounded-lg shadow-md">
-      <div class="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+      <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2">
         <input type="text" id="newTaskInput" placeholder="输入任务内容..."
           class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
         <select id="prioritySelect"
@@ -166,23 +199,33 @@
           <option value="medium">重要</option>
           <option value="high">紧急</option>
         </select>
-        <input type="date" id="dueDateInput"
-          class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="date-picker-wrapper">
+          <div class="date-display">
+            <span id="dueDateDisplay">选择日期</span>
+            <i class="fas fa-calendar-alt text-indigo-500"></i>
+          </div>
+          <input type="date" id="dueDateInput" class="w-full">
+        </div>
         <button id="addTaskBtn"
-          class="px-4 py-2 text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700">
-          <i class="mr-1 fas fa-plus"></i> 添加任务
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+          style="white-space: nowrap;">
+          <i class="fas fa-plus mr-1"></i> 添加任务
         </button>
       </div>
     </div>
 
     <!-- 任务列表 -->
-    <div id="listView" class="overflow-hidden bg-white rounded-lg shadow-md">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold">我的任务</h2>
+    <div id="listView" class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h2 class="font-semibold text-lg">我的任务</h2>
         <div class="flex space-x-2">
-          <span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">紧急</span>
-          <span class="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">重要</span>
-          <span class="px-2 py-1 text-xs text-indigo-800 bg-indigo-100 rounded-full">普通</span>
+          <span id="filterHigh" class="priority-filter text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">紧急</span>
+          <span id="filterMedium"
+            class="priority-filter text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">重要</span>
+          <span id="filterNormal"
+            class="priority-filter text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">普通</span>
+          <span id="filterAll"
+            class="priority-filter active text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">全部</span>
         </div>
       </div>
 
@@ -191,62 +234,57 @@
       </div>
 
       <div id="emptyState" class="py-12 text-center">
-        <div class="w-24 h-24 mx-auto mb-4 text-gray-300">
-          <i class="text-5xl fas fa-tasks"></i>
+        <div class="mx-auto w-24 h-24 text-gray-300 mb-4">
+          <i class="fas fa-tasks text-5xl"></i>
         </div>
-        <h3 class="mb-1 text-lg font-medium text-gray-700">暂无任务</h3>
+        <h3 class="text-lg font-medium text-gray-700 mb-1">暂无任务</h3>
         <p class="text-gray-500">点击上方添加按钮创建您的第一个任务</p>
       </div>
     </div>
   </div>
 
-  <!-- 确认对话框 -->
-  <div id="dialogOverlay" class="dialog-overlay"></div>
-  <div id="confirmDialog" class="confirm-dialog">
-    <h3 class="mb-4 text-lg font-semibold">确认删除</h3>
-    <p class="mb-6 text-gray-600">您确定要删除这个任务吗？此操作无法撤销。</p>
-    <div class="flex justify-end space-x-3">
-      <button id="dialogCancel"
-        class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
-      <button id="dialogConfirm" class="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700">确认删除</button>
+  <!-- 删除确认模态框 -->
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800">确认删除</h3>
+      </div>
+      <div class="p-6">
+        <p class="text-gray-700 mb-6">确定要删除这个任务吗？此操作无法撤销。</p>
+        <div class="flex justify-end space-x-3">
+          <button id="deleteCancel"
+            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
+          <button id="deleteConfirm" class="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700">删除</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 模态框 -->
-  <div id="modalOverlay"
-    class="fixed inset-0 z-50 flex items-center justify-center invisible transition-opacity duration-300 bg-black bg-opacity-50 opacity-0">
-    <div class="w-full max-w-md transition-all duration-300 transform scale-95 bg-white rounded-lg shadow-xl">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+  <!-- 编辑任务模态框 -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="text-lg font-semibold text-gray-800">编辑任务</h3>
-        <button id="modalClose" class="text-gray-400 hover:text-gray-600">
-          <i class="fas fa-times"></i>
-        </button>
       </div>
       <div class="p-6">
-        <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium text-gray-700">任务内容</label>
-          <input type="text" id="editTaskInput"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input type="text" id="editTaskInput" class="edit-task-input" placeholder="任务内容">
+        <select id="editPrioritySelect" class="edit-task-input">
+          <option value="normal">普通</option>
+          <option value="medium">重要</option>
+          <option value="high">紧急</option>
+        </select>
+        <div class="date-picker-wrapper mb-4">
+          <div class="date-display">
+            <span id="editDueDateDisplay">选择日期</span>
+            <i class="fas fa-calendar-alt text-indigo-500"></i>
+          </div>
+          <input type="date" id="editDueDateInput" class="w-full">
         </div>
-        <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium text-gray-700">优先级</label>
-          <select id="editPrioritySelect"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="normal">普通</option>
-            <option value="medium">重要</option>
-            <option value="high">紧急</option>
-          </select>
+        <div class="edit-task-buttons">
+          <button id="editCancel"
+            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
+          <button id="editSave" class="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">保存</button>
         </div>
-        <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium text-gray-700">截止日期</label>
-          <input type="date" id="editDueDateInput"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        </div>
-      </div>
-      <div class="flex justify-end px-6 py-4 space-x-3 border-t border-gray-200">
-        <button id="modalCancel"
-          class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
-        <button id="modalSave" class="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">保存</button>
       </div>
     </div>
   </div>
@@ -256,6 +294,47 @@
 
 
   <script>
+
+    // 格式化日期函数
+    function formatDate(dateString) {
+      if (!dateString) return '无截止日期';
+
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+
+      return `${year}-${month}-${day}`;
+    }
+    // 日期选择器交互 - 修改后的代码
+    function setupDatePickers() {
+      const datePickerWrappers = document.querySelectorAll('.date-picker-wrapper');
+
+      datePickerWrappers.forEach(wrapper => {
+        const input = wrapper.querySelector('input[type="date"]');
+        const display = wrapper.querySelector('.date-display');
+
+        // 点击显示区域触发日期选择
+        display.addEventListener('click', function (e) {
+          e.stopPropagation(); // 防止事件冒泡
+          input.showPicker(); // 直接调用showPicker方法
+        });
+
+        // 点击包装器其他区域也触发
+        wrapper.addEventListener('click', function () {
+          input.showPicker();
+        });
+
+        // 日期变化事件
+        input.addEventListener('change', function () {
+          const displaySpan = wrapper.querySelector('span');
+          if (displaySpan) {
+            displaySpan.textContent = formatDate(this.value);
+          }
+        });
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
       // 存储键名
       const STORAGE_KEY = 'local_tasks';
@@ -264,34 +343,46 @@
       const newTaskInput = document.getElementById('newTaskInput');
       const prioritySelect = document.getElementById('prioritySelect');
       const dueDateInput = document.getElementById('dueDateInput');
+      const dueDateDisplay = document.getElementById('dueDateDisplay');
       const addTaskBtn = document.getElementById('addTaskBtn');
       const taskList = document.getElementById('taskList');
       const emptyState = document.getElementById('emptyState');
 
-      // 模态框元素
-      const modalOverlay = document.getElementById('modalOverlay');
-      const modalClose = document.getElementById('modalClose');
-      const modalCancel = document.getElementById('modalCancel');
-      const modalSave = document.getElementById('modalSave');
+      // 编辑模态框元素
+      const editModal = document.getElementById('editModal');
       const editTaskInput = document.getElementById('editTaskInput');
       const editPrioritySelect = document.getElementById('editPrioritySelect');
       const editDueDateInput = document.getElementById('editDueDateInput');
+      const editDueDateDisplay = document.getElementById('editDueDateDisplay');
+      const editCancel = document.getElementById('editCancel');
+      const editSave = document.getElementById('editSave');
 
-      // 确认对话框元素
-      const dialogOverlay = document.getElementById('dialogOverlay');
-      const confirmDialog = document.getElementById('confirmDialog');
-      const dialogCancel = document.getElementById('dialogCancel');
-      const dialogConfirm = document.getElementById('dialogConfirm');
+      // 筛选元素
+      const filterHigh = document.getElementById('filterHigh');
+      const filterMedium = document.getElementById('filterMedium');
+      const filterNormal = document.getElementById('filterNormal');
+      const filterAll = document.getElementById('filterAll');
+
+      // 删除模态框元素
+      const deleteModal = document.getElementById('deleteModal');
+      const deleteCancel = document.getElementById('deleteCancel');
+      const deleteConfirm = document.getElementById('deleteConfirm');
 
       // 提示框
       const toast = document.getElementById('toast');
 
-      // 当前编辑的任务ID
-      let currentEditId = null;
-      let pendingDeleteId = null;
+      // 当前筛选状态和待删除/编辑任务ID
+      let currentFilter = 'all';
+      let taskToDelete = null;
+      let taskToEdit = null;
 
       // 初始化 - 加载任务
       loadTasks();
+
+      // 设置默认日期为今天
+      const today = new Date().toISOString().split('T')[0];
+      dueDateInput.value = today;
+      dueDateDisplay.textContent = formatDate(today);
 
       // 添加任务
       addTaskBtn.addEventListener('click', addTask);
@@ -301,49 +392,45 @@
         }
       });
 
-      // 打开模态框
-      function openModal(task) {
-        currentEditId = task.id;
-        editTaskInput.value = task.text;
-        editPrioritySelect.value = task.priority;
-        editDueDateInput.value = task.dueDate;
+      // 日期选择器交互
+      const datePickerWrappers = document.querySelectorAll('.date-picker-wrapper');
+      datePickerWrappers.forEach(wrapper => {
+        const input = wrapper.querySelector('input[type="date"]');
+        const display = wrapper.querySelector('.date-display');
 
-        modalOverlay.classList.remove('invisible', 'opacity-0');
-        document.querySelector('.modal-overlay .modal-container').classList.remove('scale-95');
-      }
-
-      // 关闭模态框
-      function closeModal() {
-        modalOverlay.classList.add('invisible', 'opacity-0');
-        document.querySelector('.modal-overlay .modal-container').classList.add('scale-95');
-        currentEditId = null;
-      }
-
-      // 显示确认对话框
-      function showConfirmDialog(id) {
-        pendingDeleteId = id;
-        dialogOverlay.classList.add('show');
-        confirmDialog.classList.add('show');
-      }
-
-      // 隐藏确认对话框
-      function hideConfirmDialog() {
-        dialogOverlay.classList.remove('show');
-        confirmDialog.classList.remove('show');
-        pendingDeleteId = null;
-      }
-
-      // 确认删除
-      dialogConfirm.addEventListener('click', function () {
-        if (pendingDeleteId) {
-          deleteTask(pendingDeleteId);
-          hideConfirmDialog();
-        }
+        display.addEventListener('click', function () {
+          input.click();
+        });
       });
 
-      // 取消删除
-      dialogCancel.addEventListener('click', hideConfirmDialog);
-      dialogOverlay.addEventListener('click', hideConfirmDialog);
+      // 主日期选择器
+      dueDateInput.addEventListener('change', function () {
+        dueDateDisplay.textContent = formatDate(this.value);
+      });
+
+      // 编辑模态框中的日期选择器
+      editDueDateInput.addEventListener('change', function () {
+        editDueDateDisplay.textContent = formatDate(this.value);
+      });
+
+      setupDatePickers();
+
+      // 筛选任务
+      filterHigh.addEventListener('click', function () {
+        setFilter('high');
+      });
+
+      filterMedium.addEventListener('click', function () {
+        setFilter('medium');
+      });
+
+      filterNormal.addEventListener('click', function () {
+        setFilter('normal');
+      });
+
+      filterAll.addEventListener('click', function () {
+        setFilter('all');
+      });
 
       // 显示提示
       function showToast(message) {
@@ -380,36 +467,11 @@
         renderTasks(tasks);
 
         newTaskInput.value = '';
-        dueDateInput.value = '';
+        dueDateInput.value = today;
+        dueDateDisplay.textContent = formatDate(today);
         prioritySelect.value = 'normal';
 
         showToast('任务添加成功');
-      }
-
-      // 保存编辑后的任务
-      function saveEditedTask() {
-        const text = editTaskInput.value.trim();
-        if (!text) {
-          showToast('请输入任务内容');
-          return;
-        }
-
-        const tasks = getTasks();
-        const taskIndex = tasks.findIndex(task => task.id === currentEditId);
-
-        if (taskIndex !== -1) {
-          tasks[taskIndex] = {
-            ...tasks[taskIndex],
-            text,
-            priority: editPrioritySelect.value,
-            dueDate: editDueDateInput.value
-          };
-
-          saveTasks(tasks);
-          renderTasks(tasks);
-          closeModal();
-          showToast('任务更新成功');
-        }
       }
 
       // 删除任务
@@ -418,6 +480,21 @@
         saveTasks(tasks);
         renderTasks(tasks);
         showToast('任务删除成功');
+      }
+
+      // 编辑任务
+      function editTask(id, newText, newPriority, newDueDate) {
+        const tasks = getTasks();
+        const taskIndex = tasks.findIndex(task => task.id === id);
+
+        if (taskIndex !== -1) {
+          tasks[taskIndex].text = newText;
+          tasks[taskIndex].priority = newPriority;
+          tasks[taskIndex].dueDate = newDueDate;
+          saveTasks(tasks);
+          renderTasks(tasks);
+          showToast('任务修改成功');
+        }
       }
 
       // 切换任务完成状态
@@ -449,6 +526,32 @@
         renderTasks(tasks);
       }
 
+      // 设置筛选状态
+      function setFilter(filter) {
+        currentFilter = filter;
+
+        // 更新筛选按钮状态
+        [filterHigh, filterMedium, filterNormal, filterAll].forEach(btn => {
+          btn.classList.remove('active');
+        });
+
+        switch (filter) {
+          case 'high':
+            filterHigh.classList.add('active');
+            break;
+          case 'medium':
+            filterMedium.classList.add('active');
+            break;
+          case 'normal':
+            filterNormal.classList.add('active');
+            break;
+          default:
+            filterAll.classList.add('active');
+        }
+
+        renderTasks(getTasks());
+      }
+
       // 渲染任务列表
       function renderTasks(tasks) {
         if (tasks.length === 0) {
@@ -465,14 +568,25 @@
           return priorityOrder[b.priority] - priorityOrder[a.priority];
         });
 
-        taskList.innerHTML = sortedTasks.map(task => `
+        // 应用筛选
+        const filteredTasks = sortedTasks.filter(task => {
+          if (currentFilter === 'all') return true;
+          return task.priority === currentFilter;
+        });
+
+        if (filteredTasks.length === 0) {
+          taskList.innerHTML = '<div class="px-6 py-8 text-center text-gray-500">没有匹配的任务</div>';
+          return;
+        }
+
+        taskList.innerHTML = filteredTasks.map(task => `
                     <div class="px-6 py-4 hover:bg-gray-50 task-item ${task.priority}-priority ${task.completed ? 'opacity-70' : ''}">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <label class="inline-flex items-center cursor-pointer">
                                     <input 
                                         type="checkbox" 
-                                        class="absolute w-5 h-5 opacity-0 cursor-pointer checkbox" 
+                                        class="checkbox opacity-0 absolute h-5 w-5 cursor-pointer" 
                                         ${task.completed ? 'checked' : ''}
                                         data-id="${task.id}"
                                     >
@@ -483,17 +597,17 @@
                                         <span class="${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}">${task.text}</span>
                                     </div>
                                     <div class="text-xs ${task.completed ? 'text-gray-400' : 'text-gray-500'} mt-1">
-                                        ${task.dueDate ? `截止日期: ${task.dueDate}` : '无截止日期'}
+                                        ${task.dueDate ? `截止日期: ${formatDate(task.dueDate)}` : '无截止日期'}
                                     </div>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-3">
                                 ${getPriorityBadge(task.priority)}
                                 ${getDueDateBadge(task.dueDate)}
-                                <button class="text-gray-400 transition-colors edit-btn hover:text-indigo-600" data-id="${task.id}">
+                                <button class="edit-btn text-gray-400 hover:text-indigo-600 transition-colors" data-id="${task.id}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="text-gray-400 transition-colors delete-btn hover:text-red-600" data-id="${task.id}">
+                                <button class="delete-btn text-gray-400 hover:text-red-600 transition-colors" data-id="${task.id}">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -508,16 +622,27 @@
           });
         });
 
-        document.querySelectorAll('.edit-btn').forEach(btn => {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
           btn.addEventListener('click', function () {
-            const task = tasks.find(t => t.id === parseInt(this.dataset.id));
-            if (task) openModal(task);
+            taskToDelete = parseInt(this.dataset.id);
+            deleteModal.classList.add('active');
           });
         });
 
-        document.querySelectorAll('.delete-btn').forEach(btn => {
+        document.querySelectorAll('.edit-btn').forEach(btn => {
           btn.addEventListener('click', function () {
-            showConfirmDialog(parseInt(this.dataset.id));
+            const taskId = parseInt(this.dataset.id);
+            const tasks = getTasks();
+            const task = tasks.find(t => t.id === taskId);
+
+            if (task) {
+              taskToEdit = taskId;
+              editTaskInput.value = task.text;
+              editPrioritySelect.value = task.priority;
+              editDueDateInput.value = task.dueDate || '';
+              editDueDateDisplay.textContent = task.dueDate ? formatDate(task.dueDate) : '选择日期';
+              editModal.classList.add('active');
+            }
           });
         });
       }
@@ -526,11 +651,11 @@
       function getPriorityBadge(priority) {
         switch (priority) {
           case 'high':
-            return '<span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">紧急</span>';
+            return '<span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">紧急</span>';
           case 'medium':
-            return '<span class="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">重要</span>';
+            return '<span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">重要</span>';
           default:
-            return '<span class="px-2 py-1 text-xs text-indigo-800 bg-indigo-100 rounded-full">普通</span>';
+            return '<span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">普通</span>';
         }
       }
 
@@ -544,16 +669,64 @@
         const diffTime = due - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays < 0) {
-          return '<span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">已过期</span>';
-        } else if (diffDays === 0) {
-          return '<span class="px-2 py-1 text-xs text-red-800 bg-red-100 rounded-full">今天到期</span>';
+        if (diffDays <= 0) {
+          return '<span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">已过期</span>';
+        } else if (diffDays === 1) {
+          return '<span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">今天到期</span>';
         } else if (diffDays <= 3) {
-          return `<span class="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded-full">${diffDays}天后到期</span>`;
+          return `<span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">${diffDays - 1}天后到期</span>`;
         } else {
-          return `<span class="px-2 py-1 text-xs text-green-800 bg-green-100 rounded-full">${diffDays}天后到期</span>`;
+          return `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">${diffDays - 1}天后到期</span>`;
         }
       }
+
+      // 格式化日期显示
+      function formatDate(dateString) {
+        if (!dateString) return '无截止日期';
+
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+      }
+
+      // 事件监听
+      deleteCancel.addEventListener('click', function () {
+        deleteModal.classList.remove('active');
+        taskToDelete = null;
+      });
+
+      deleteConfirm.addEventListener('click', function () {
+        if (taskToDelete) {
+          deleteTask(taskToDelete);
+          deleteModal.classList.remove('active');
+          taskToDelete = null;
+        }
+      });
+
+      editCancel.addEventListener('click', function () {
+        editModal.classList.remove('active');
+        taskToEdit = null;
+      });
+
+      editSave.addEventListener('click', function () {
+        if (taskToEdit) {
+          const newText = editTaskInput.value.trim();
+          if (!newText) {
+            showToast('请输入任务内容');
+            return;
+          }
+
+          const newPriority = editPrioritySelect.value;
+          const newDueDate = editDueDateInput.value;
+
+          editTask(taskToEdit, newText, newPriority, newDueDate);
+          editModal.classList.remove('active');
+          taskToEdit = null;
+        }
+      });
     });
   </script>
 </body>
